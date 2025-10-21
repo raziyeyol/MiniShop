@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiniShop.Api", "MiniShop.Api\MiniShop.Api.csproj", "{FC61AD96-1E33-4CDF-B0DB-AFA45303E954}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiniShop.Api.Tests", "MiniShop.Api.Tests\MiniShop.Api.Tests.csproj", "{5371525C-BA4C-44E3-8BFA-04A4AE63B3FB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FC61AD96-1E33-4CDF-B0DB-AFA45303E954}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FC61AD96-1E33-4CDF-B0DB-AFA45303E954}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FC61AD96-1E33-4CDF-B0DB-AFA45303E954}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FC61AD96-1E33-4CDF-B0DB-AFA45303E954}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5371525C-BA4C-44E3-8BFA-04A4AE63B3FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5371525C-BA4C-44E3-8BFA-04A4AE63B3FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5371525C-BA4C-44E3-8BFA-04A4AE63B3FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5371525C-BA4C-44E3-8BFA-04A4AE63B3FB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
