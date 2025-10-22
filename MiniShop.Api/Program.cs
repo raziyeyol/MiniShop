@@ -1,42 +1,112 @@
+using Asp.Versioning;
+using Asp.Versioning.ApiExplorer;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Hellang.Middleware.ProblemDetails;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
+using MiniShop.Api;
+using MiniShop.Api.Data;
+using MiniShop.Api.Validation;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// --- EF Core to MySQL ---
+var cs = builder.Configuration.GetConnectionString("mysql")
+         ?? "Server=localhost;Port=3306;Database=minishop;User=root;Password=Password123!";
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseMySql(cs, ServerVersion.AutoDetect(cs)));
+
+// --- Versioning ---
+builder.Services
+    .AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(1, 0);
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.ReportApiVersions = true;
+    })
+    .AddApiExplorer(options =>
+    {
+        options.GroupNameFormat = "'v'VVV";          // e.g. v1, v2
+        options.SubstituteApiVersionInUrl = true;
+    });
+
+// --- ProblemDetails ---
+builder.Services.AddProblemDetails(opts =>
+{
+    opts.IncludeExceptionDetails = (ctx, ex) => builder.Environment.IsDevelopment();
+});
+
+// --- Validation (FluentValidation) ---
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<ProductCreateValidator>();
+
+// --- Caching (Redis or in-memory fallback) ---
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Redis:ConnectionString"]))
+{
+    builder.Services.AddStackExchangeRedisCache(o =>
+        o.Configuration = builder.Configuration["Redis:ConnectionString"]);
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+
+// --- Swagger ---
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Hook Swagger to API versioning (register docs per discovered version)
+builder.Services.AddTransient<IConfigureOptions<Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenOptions>, ConfigureSwaggerOptions>();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseProblemDetails();
 
-var summaries = new[]
+// Swagger
+app.UseSwagger();
+app.UseSwaggerUI(o =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    var provider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+    foreach (var desc in provider.ApiVersionDescriptions)
+    {
+        o.SwaggerEndpoint($"/swagger/{desc.GroupName}/swagger.json", desc.GroupName.ToUpperInvariant());
+    }
+});
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+// Map endpoints with versioning
+var api = app.NewVersionedApi();
+var v1 = api.MapGroup("/api/v{version:apiVersion}").HasApiVersion(1.0);
+var v2 = api.MapGroup("/api/v{version:apiVersion}").HasApiVersion(2.0);
+
+v1.MapProductEndpoints();
+v2.MapProductEndpointsV2();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+// Needed for WebApplicationFactory in tests
+public partial class Program { }
+
+// -----------------------
+// Helper to register Swagger docs per API version
+// -----------------------
+file sealed class ConfigureSwaggerOptions : IConfigureOptions<Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenOptions>
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    private readonly IApiVersionDescriptionProvider _provider;
+
+    public ConfigureSwaggerOptions(IApiVersionDescriptionProvider provider) => _provider = provider;
+
+    public void Configure(Swashbuckle.AspNetCore.SwaggerGen.SwaggerGenOptions options)
+    {
+        foreach (var desc in _provider.ApiVersionDescriptions)
+        {
+            options.SwaggerDoc(desc.GroupName, new OpenApiInfo
+            {
+                Title = "MiniShop API",
+                Version = desc.ApiVersion.ToString(),
+                Description = "Versioned minimal API with EF Core (MySQL), validation, and ProblemDetails."
+            });
+        }
+    }
 }
